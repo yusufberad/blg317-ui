@@ -507,7 +507,7 @@ const HomePage: React.FC = () => {
             )}
             paginationProps={{
               currentPage: currentPageMovie,
-              totalPages: 10,
+              totalPages: 200,
               onPageChange: setCurrentPageMovie,
             }}
           />
@@ -527,7 +527,7 @@ const HomePage: React.FC = () => {
             )}
             paginationProps={{
               currentPage: currentPageActor,
-              totalPages: 10,
+              totalPages: 200,
               onPageChange: setCurrentPageActor,
             }}
           />
@@ -546,7 +546,7 @@ const HomePage: React.FC = () => {
             )}
             paginationProps={{
               currentPage: currentPageDirector,
-              totalPages: 10,
+              totalPages: 200,
               onPageChange: setCurrentPageDirector,
             }}
           />
