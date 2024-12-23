@@ -1,5 +1,12 @@
 import { clientSahmat } from "../client";
-import { actor, director, movie } from "./types";
+import {
+  actor,
+  director,
+  directorMovies,
+  movie,
+  movieDetails,
+  role,
+} from "./types";
 
 export const getActors = async (currentPage: number) => {
   return clientSahmat.get<actor>("/actors", {
@@ -8,12 +15,15 @@ export const getActors = async (currentPage: number) => {
   });
 };
 
-export const getActorMovieDeatils = async (id: number) => {
+export const getActorDeatils = async (id: number) => {
   return clientSahmat.get<movie>(`/actors/${id}/details`);
 };
 
-export const getDirectorMovieDetails = async (id: number) => {
-  return clientSahmat.get<movie>(`/directors/${id}/details`);
+export const getDirectorDetails = async (id: number) => {
+  return clientSahmat.get<directorMovies[]>(`/directors/${id}/movies`);
+};
+export const getMovieDetails = async (id: number) => {
+  return clientSahmat.get<movieDetails>(`/movies/${id}/details`);
 };
 
 export const getDirectorMoviesCount = async (id: number) => {
@@ -83,4 +93,43 @@ export const createDirector = async (director_data: director) => {
 
 export const createMovie = async (movie_data: movie) => {
   return clientSahmat.post("/movies", movie_data);
+};
+
+export const getActorRoles = async (id: number) => {
+  return clientSahmat.get<role[]>(`/actors/${id}/roles`);
+};
+
+export const getSortedActor = async () => {
+  return clientSahmat.get<actor[]>("/actors/sorted");
+};
+
+export const searchActor = async (query: string) => {
+  return clientSahmat.get<actor[]>("/actors/search", { q: query });
+};
+
+export const searchDirector = async (query: string) => {
+  return clientSahmat.get<director[]>("/directors/search", { q: query });
+};
+
+export const getMoviesSortedByDate = async () => {
+  return clientSahmat.get<movie[]>("/movies/sorted_by_date");
+};
+
+export const getMoviesSortedByRank = async () => {
+  return clientSahmat.get<movie[]>("/movies/sorted_by_rank");
+};
+
+export const searchMovie = async (query: string) => {
+  return clientSahmat.get<movie[]>("/movies/search", { name: query });
+};
+
+export const getGenres = async () => {
+  return clientSahmat.get<string[]>("/genres");
+};
+
+export const getMoviesByGenre = async (genre: string, currentPage: number) => {
+  return clientSahmat.get<movie[]>(`/movies/by_genre`, {
+    genre,
+    page: currentPage,
+  });
 };

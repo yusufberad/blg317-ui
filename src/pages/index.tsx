@@ -16,10 +16,26 @@ import {
   createActor,
   createDirector,
   createMovie,
-  getActorMovieDeatils,
-  getDirectorMovieDetails,
+  getActorDeatils,
+  getDirectorDetails,
+  getMovieDetails,
+  getActorRoles,
+  getMoviesSortedByDate,
+  getMoviesSortedByRank,
+  getSortedActor,
+  searchActor,
+  searchMovie,
+  getGenres,
+  getMoviesByGenre,
 } from "../services/endpoints";
-import { actor, director, movie } from "../services/endpoints/types";
+import {
+  actor,
+  director,
+  directorMovies,
+  movie,
+  movieDetails,
+  role,
+} from "../services/endpoints/types";
 import Pagination from "@/components/Pagination";
 import Modal from "../components/Modal"; // Modal import
 import { MdDeleteForever } from "react-icons/md";
@@ -34,14 +50,45 @@ const HomePage: React.FC = () => {
   const [currentPageMovie, setCurrentPageMovie] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [selectedActor, setSelectedActor] = useState<actor | null>(null);
+  const [selectedActor, setSelectedActor] = useState<any>(null);
   const [selectedDirector, setSelectedDirector] = useState<director | null>(
     null
   );
-  const [selectedMovie, setSelectedMovie] = useState<movie | null>(null);
+  const [actorRoles, setActorRoles] = useState<role[]>([]);
+  const [selectedMovie, setSelectedMovie] = useState<movieDetails | null>(null);
+  const [movieActorList, setMovieActorList] = useState<actor[]>([]);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedDeleteItem, setSelectedDeleteItem] = useState<any>(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [isSortedActor, setIsSortedActor] = useState(false);
+  const [movieSort, setMovieSort] = useState<string>("");
+  const movieSortOptions = ["rank", "date"];
+  const [genres, setGenres] = useState<string[]>([]);
+  const [directorsMovies, setDirectorsMovies] = useState<directorMovies[]>([]);
+  const [selectedGenre, setSelectedGenre] = useState<string>("");
+  const [newDirector, setNewDirector] = useState<director>({
+    id: 0,
+    first_name: "",
+    last_name: "",
+  });
+  const [newActor, setNewActor] = useState<actor>({
+    id: 0,
+    first_name: "",
+    last_name: "",
+    gender: "M",
+  });
+  const [newMovie, setNewMovie] = useState<movie>({
+    id: 0,
+    name: "",
+    year: 0,
+    movie_rank: 0,
+  });
+
+  useEffect(() => {
+    getGenres().then((response) => {
+      setGenres(Array.isArray(response.data) ? response.data : []);
+    });
+  }, []);
 
   const deleteItem = async (type: string, id: number) => {
     switch (type) {
@@ -56,17 +103,39 @@ const HomePage: React.FC = () => {
         break;
     }
   };
-  useEffect(() => {
-    getActors(currentPageActor).then((response) => {
-      setActors(Array.isArray(response.data) ? response.data : []);
+
+  const addDirector = async (data: director) => {
+    console.log(data);
+    await createDirector(data).then((response) => {
+      if (response.status === 201) {
+        setCurrentPageDirector(1);
+      } else {
+        alert("An error occurred while adding the director.");
+      }
     });
-    getDirectors(currentPageDirector).then((response) => {
-      setDirectors(Array.isArray(response.data) ? response.data : []);
+  };
+
+  const addActor = async (data: actor) => {
+    await createActor(data).then((response) => {
+      if (response.status === 201) {
+        setCurrentPageActor(1);
+      } else {
+        alert("An error occurred while adding the actor.");
+      }
     });
-    getMovies(currentPageMovie).then((response) => {
-      setMovies(Array.isArray(response.data) ? response.data : []);
+  };
+
+  const addMovie = async (data: movie) => {
+    console.log("test");
+    console.log(data);
+    await createMovie(data).then((response) => {
+      if (response.status === 201) {
+        setCurrentPageMovie(1);
+      } else {
+        alert("An error occurred while adding the movie.");
+      }
     });
-  }
+  };
 
   const updateItem = async (type: string, id: number, data: any) => {
     console.log(type, id, data);
@@ -93,7 +162,7 @@ const HomePage: React.FC = () => {
           id: id,
           name: selectedItem.name,
           year: selectedItem.year,
-          rank: selectedItem.rank,
+          movie_rank: selectedItem.rank,
         });
         setCurrentPageMovie(1);
         break;
@@ -105,33 +174,100 @@ const HomePage: React.FC = () => {
     switch (type) {
       case "actor":
         const actorResponse = await getActor(id);
+        const actorRolesResponse = await getActorRoles(id);
+        if (actorRolesResponse.data) {
+          setActorRoles(actorRolesResponse.data);
+        }
         setSelectedActor(actorResponse.data);
         break;
       case "director":
-        const directorResponse = await getDirector(id);
-        setSelectedDirector(directorResponse.data);
+        const directorResponsed = await getDirector(id);
+        setSelectedDirector(directorResponsed.data);
+        const directorResponse = await getDirectorDetails(id);
+
+        if (directorResponse.data) {
+          // Gelen veriyi işle
+          const processedMovies = directorResponse.data.map((movie) => ({
+            ...movie,
+            actors:
+              typeof movie.actors === "string"
+                ? JSON.parse(movie.actors)
+                : movie.actors, // actors alanını JSON stringden listeye dönüştür
+          }));
+
+          // State'e kaydet
+          setDirectorsMovies(processedMovies);
+        }
+
+        console.log(directorsMovies);
         break;
       case "movie":
-        const movieResponse = await getMovie(id);
+        console.log(type);
+        const movieResponse = await getMovieDetails(id);
         setSelectedMovie(movieResponse.data);
+        if (movieResponse.data?.actor_ids) {
+          movieResponse.data.actor_ids.forEach(async (actorId) => {
+            const actorResponse = await getActor(actorId);
+            if (actorResponse.data) {
+              if (actorResponse.data) {
+                if (actorResponse.data) {
+                  setMovieActorList((prev) => [...prev, actorResponse.data]);
+                }
+              }
+            }
+          });
+        }
         break;
     }
   };
 
   useEffect(() => {
-    getActors(currentPageActor).then((response) => {
-      setActors(Array.isArray(response.data) ? response.data : []);
-    });
+    if (isSortedActor) {
+      getSortedActor().then((response) => {
+        setActors(Array.isArray(response.data) ? response.data : []);
+      });
+    } else {
+      getActors(currentPageActor).then((response) => {
+        setActors(Array.isArray(response.data) ? response.data : []);
+      });
+    }
     getDirectors(currentPageDirector).then((response) => {
       setDirectors(Array.isArray(response.data) ? response.data : []);
     });
-    getMovies(currentPageMovie).then((response) => {
-      setMovies(Array.isArray(response.data) ? response.data : []);
-    });
-  }, [currentPageDirector, currentPageActor, currentPageMovie]);
+    if (selectedGenre !== "") {
+      getMoviesByGenre(selectedGenre, currentPageMovie).then((response) => {
+        setMovies(Array.isArray(response.data) ? response.data : []);
+      });
+    } else if (movieSort === "rank") {
+      getMoviesSortedByRank().then((response) => {
+        setMovies(Array.isArray(response.data) ? response.data : []);
+      });
+    } else if (movieSort === "date") {
+      getMoviesSortedByDate().then((response) => {
+        setMovies(Array.isArray(response.data) ? response.data : []);
+      });
+    } else {
+      getMovies(currentPageMovie).then((response) => {
+        setMovies(Array.isArray(response.data) ? response.data : []);
+      });
+    }
+  }, [
+    currentPageDirector,
+    currentPageActor,
+    currentPageMovie,
+    isSortedActor,
+    movieSort,
+    selectedGenre,
+  ]);
 
   const openDetails = (item: any) => {
-    getDetails(item.type, item.id);
+    console.log("testDetails");
+    console.log(item);
+    item.movie_rank
+      ? getDetails("movie", item.id)
+      : item.gender
+      ? getDetails("actor", item.id)
+      : getDetails("director", item.id);
     setSelectedItem(item);
     setIsModalOpen(true);
   };
@@ -158,7 +294,7 @@ const HomePage: React.FC = () => {
           setSelectedItem(item);
           setIsUpdateModalOpen(true);
         }}
-        className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-3 rounded transition-all duration-300"
+        className="bg-blue-500 cursor-pointer hover:bg-blue-600 text-white font-semibold py-1 px-3 rounded transition-all duration-300"
       >
         <FaPencilAlt className="inline-block w-4 h-4 mr-1" />
       </button>
@@ -167,13 +303,194 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <header className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-8 shadow-md">
+      <header className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white py-8 shadow-md">
         <h1 className="text-center text-4xl font-extrabold tracking-wide">
           IMDB Mock Frontend
         </h1>
       </header>
       <main className="px-5 mx-auto">
-        <SearchBar />
+        <SearchBar getDetails={openDetails} />
+
+        <div className="relative w-full flex justify-start gap-10 mb-5">
+          <h2 className="text-xl font-bold">Sort Actors :</h2>
+          <button
+            onClick={() => {
+              setIsSortedActor(!isSortedActor);
+            }}
+            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-3 rounded transition-all duration-300"
+          >
+            {isSortedActor ? "Unsort" : "Sort"}
+          </button>
+        </div>
+        <div className="flex gap-10 mb-5">
+          <h1 className="text-xl font-bold">Movies Genre:</h1>
+          <select
+            onChange={(e) => {
+              setSelectedGenre(e.target.value);
+            }}
+          >
+            <option value="">All</option>
+            {genres.map((genre) => (
+              <option key={genre} value={genre}>
+                {genre}
+              </option>
+            ))}
+          </select>
+        </div>
+        <ul className="flex gap-10">
+          <div>
+            <h2 className="text-xl font-bold">Sort Movies By :</h2>
+          </div>
+          <div className="flex gap-2">
+            {movieSortOptions.map((sortOption) => (
+              <li
+                key={sortOption}
+                onClick={() => setMovieSort(sortOption)}
+                className={`cursor-pointer w-fit text-white font-semibold py-1 px-3 rounded transition-all duration-300 ${
+                  movieSort === sortOption ? "bg-blue-500" : "bg-gray-200"
+                }`}
+              >
+                {sortOption}
+              </li>
+            ))}
+            <li>
+              <button
+                onClick={() => setMovieSort("")}
+                className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-3 rounded transition-all duration-300"
+              >
+                Clear
+              </button>
+            </li>
+          </div>
+        </ul>
+        {/* add section */}
+        <div className="flex justify-between w-full">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-center font-bold text-3xl">Add Movie</h1>
+            <div className="flex flex-col gap-2">
+              <input
+                type="text"
+                placeholder="Name"
+                onChange={(e) =>
+                  setNewMovie({
+                    ...newMovie,
+                    name: e.target.value,
+                  })
+                }
+                className="border p-2 rounded"
+              />
+              <input
+                type="text"
+                placeholder="Year"
+                onChange={(e) =>
+                  setNewMovie({
+                    ...newMovie,
+                    year: parseInt(e.target.value),
+                  })
+                }
+                className="border p-2 rounded"
+              />
+              <input
+                type="text"
+                placeholder="Rank"
+                onChange={(e) =>
+                  setNewMovie({
+                    ...newMovie,
+                    movie_rank: parseInt(e.target.value),
+                  })
+                }
+                className="border p-2 rounded"
+              />
+              <button
+                onClick={() => {
+                  console.log(newMovie);
+                  addMovie(newMovie);
+                }}
+                className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-3 rounded transition-all duration-300"
+              >
+                Add Movie
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <h1 className="text-center font-bold text-3xl">Add Actor</h1>
+            <div className="flex flex-col gap-2">
+              <input
+                type="text"
+                placeholder="First Name"
+                onChange={(e) =>
+                  setNewActor({
+                    ...newActor,
+                    first_name: e.target.value,
+                  })
+                }
+                className="border p-2 rounded"
+              />
+              <input
+                type="text"
+                placeholder="Last Name"
+                onChange={(e) =>
+                  setNewActor({
+                    ...newActor,
+                    last_name: e.target.value,
+                  })
+                }
+                className="border p-2 rounded"
+              />
+              <select
+                onChange={(e) =>
+                  setNewActor({
+                    ...newActor,
+                    gender: e.target.value,
+                  })
+                }
+              >
+                Gender:
+                <option value="M">Male</option>
+                <option value="F">Female</option>
+              </select>
+              <button
+                onClick={() => addActor(newActor)}
+                className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-3 rounded transition-all duration-300"
+              >
+                Add Actor
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <h1 className="text-center font-bold text-3xl">Add Director</h1>
+            <div className="flex flex-col gap-2">
+              <input
+                type="text"
+                placeholder="First Name"
+                onChange={(e) =>
+                  setNewDirector({
+                    ...newDirector,
+                    first_name: e.target.value,
+                  })
+                }
+                className="border p-2 rounded"
+              />
+              <input
+                type="text"
+                placeholder="Last Name"
+                onChange={(e) =>
+                  setNewDirector({
+                    ...newDirector,
+                    last_name: e.target.value,
+                  })
+                }
+                className="border p-2 rounded"
+              />
+              <button
+                onClick={() => addDirector(newDirector)}
+                className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-3 rounded transition-all duration-300"
+              >
+                Add Director
+              </button>
+            </div>
+          </div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mt-12">
           {/* Movies */}
           <SectionCard
@@ -195,6 +512,7 @@ const HomePage: React.FC = () => {
             }}
           />
           {/* Actors */}
+
           <SectionCard
             title="Actors"
             icon={<div>🎭</div>}
@@ -242,42 +560,123 @@ const HomePage: React.FC = () => {
         </h2>
         {selectedItem && (
           <div className="grid grid-cols-2 gap-y-3 gap-x-4">
-            {selectedItem.first_name && (
-              <>
-                <div className="font-semibold text-gray-700">First Name:</div>
-                <div>{selectedItem.first_name}</div>
-              </>
-            )}
-            {selectedItem.last_name && (
-              <>
-                <div className="font-semibold text-gray-700">Last Name:</div>
-                <div>{selectedItem.last_name}</div>
-              </>
-            )}
-            {selectedItem.name && (
+            {selectedItem.name ? (
               <>
                 <div className="font-semibold text-gray-700">Name:</div>
-                <div>{selectedItem.name}</div>
-              </>
-            )}
-            {selectedItem.year && (
-              <>
+                <p>{selectedMovie?.name}</p>
                 <div className="font-semibold text-gray-700">Year:</div>
-                <div>{selectedItem.year}</div>
-              </>
-            )}
-            {selectedItem.rank && (
-              <>
+                <p>{selectedMovie?.year}</p>
                 <div className="font-semibold text-gray-700">Rank:</div>
-                <div>{selectedItem.rank}</div>
+                <p>{selectedMovie?.movie_rank}</p>
+                {selectedMovie?.genres ? (
+                  <>
+                    <div className="font-semibold text-gray-700">Genres:</div>
+                    <p>{selectedMovie?.genres.join(", ")}</p>
+                  </>
+                ) : (
+                  <div className="font-semibold text-gray-700">
+                    Genres: Not Available
+                  </div>
+                )}
+                {selectedMovie?.actor_ids &&
+                selectedMovie?.actor_ids.length > 0 ? (
+                  <>
+                    <div className="font-semibold text-gray ">Actors:</div>
+                    <ul className="max-h-[20rem] overflow-scroll">
+                      {movieActorList.map((actor) => (
+                        <li key={actor.id}>
+                          {actor.first_name} {actor.last_name}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <div className="font-semibold text-gray-700">
+                    Actors: Not Available
+                  </div>
+                )}
               </>
-            )}
-            {selectedItem.gender && (
+            ) : selectedItem.gender ? (
               <>
-                <div className="font-semibold text-gray-700">Gender:</div>
-                <div>{selectedItem.gender}</div>
+                <div className="font-semibold text-gray-700">Name:</div>
+                <p>
+                  {selectedActor?.first_name} {selectedActor?.last_name}
+                </p>
+                <div className="font-semibold text-gray-700">Roles:</div>
+                <div className="h-[20vw] overflow-y-scroll">
+                  <table className="w-full border-collapse">
+                    <thead className="sticky">
+                      <tr>
+                        <th className="text-left px-4 py-2 border">Movie</th>
+                        <th className="text-left px-4 py-2 border">-</th>
+                        <th className="text-left px-4 py-2 border">Role</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {actorRoles.map((role, index) => (
+                        <tr key={index} className="border">
+                          <td className="px-4 py-2">{role.movie}</td>
+                          <td className="px-4 py-2">-</td>
+                          <td className="px-4 py-2">{role.role}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="font-semibold text-gray-700">Name:</div>
+                <p>
+                  {selectedDirector?.first_name} {selectedDirector?.last_name}
+                </p>
+                <div className="font-semibold text-gray-700">Movies:</div>
+                <ul className="max-h-[20rem] overflow-scroll">
+                  {directorsMovies.map((movie, index) => (
+                    <li key={index} className="border-[1px] borde-gray">
+                      <div className="flex font-bold text-2xl">
+                        <h1>Movie Name :</h1>
+                        <h1>
+                          {movie.name} ({movie.year})
+                        </h1>
+                      </div>
+
+                      <div className="flex">
+                        <h1>Rank:</h1>
+                        <h1>{movie.movie_rank}</h1>
+                      </div>
+                      <ul className="flex flex-col">
+                        <h1 className="font-bold text-xl">Actors:</h1>
+                        {movie.actors.map((actor, index) => (
+                          <li key={index}>
+                            {actor.first_name} {actor.last_name}
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  ))}
+                </ul>
               </>
             )}
+
+            {/*Delete Button*/}
+            <div className="col-span-2 flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setSelectedDeleteItem(selectedItem);
+                  setIsDeleteModalOpen(true);
+                }}
+                className="bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-3 rounded transition-all duration-300"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-1 px-3 rounded transition-all duration-300"
+              >
+                Close
+              </button>
+            </div>
           </div>
         )}
       </Modal>

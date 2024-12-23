@@ -15,7 +15,7 @@ export interface movie {
   id: number;
   name: string;
   year: number;
-  rank: number;
+  movie_rank: number;
 }
 
 export interface updateActor {
@@ -40,4 +40,27 @@ export interface updateMovie {
   movie_name: string;
   movie_year: number;
   movie_rank: number;
+}
+
+export interface movieDetails {
+  actor_ids: number[];
+  director_id: number;
+  genres: string[];
+  id: number;
+  movie_rank: number;
+  name: string;
+  year: number;
+}
+
+export interface role {
+  movie: string;
+  role: string;
+}
+
+export interface directorMovies {
+  id: number;
+  name: string;
+  movie_rank: number;
+  year: number;
+  actors: string | actor[];
 }

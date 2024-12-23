@@ -1,4 +1,10 @@
 import React, { useState } from "react";
+import {
+  searchMovie,
+  searchActor,
+  searchDirector,
+} from "../services/endpoints";
+import { movie, actor, director } from "../services/endpoints/types";
 
 const mockData = {
   movies: ["Inception", "Interstellar", "The Dark Knight"],
@@ -7,12 +13,16 @@ const mockData = {
 };
 
 type SearchResults = {
-  movies: string[];
-  actors: string[];
-  directors: string[];
+  movies: movie[];
+  actors: actor[];
+  directors: director[];
 };
 
-const SearchBar: React.FC = () => {
+interface SearchBarProps {
+  getDetails: (item: any) => void;
+}
+
+const SearchBar: React.FC<SearchBarProps> = ({ getDetails }) => {
   const [query, setQuery] = useState<string>("");
   const [results, setResults] = useState<SearchResults>({
     movies: [],
@@ -25,20 +35,23 @@ const SearchBar: React.FC = () => {
     setQuery(value);
 
     if (value) {
-      const filteredResults: SearchResults = {
-        movies: mockData.movies.filter((movie) =>
-          movie.toLowerCase().includes(value)
-        ),
-        actors: mockData.actors.filter((actor) =>
-          actor.toLowerCase().includes(value)
-        ),
-        directors: mockData.directors.filter((director) =>
-          director.toLowerCase().includes(value)
-        ),
-      };
-      setResults(filteredResults);
-    } else {
-      setResults({ movies: [], actors: [], directors: [] });
+      searchMovie(value).then((res) => {
+        const movies = res.data || [];
+
+        setResults((prev) => ({ ...prev, movies }));
+      });
+
+      searchActor(value).then((res) => {
+        const actors = res.data || [];
+
+        setResults((prev) => ({ ...prev, actors }));
+      });
+
+      searchDirector(value).then((res) => {
+        const directors = res.data || [];
+
+        setResults((prev) => ({ ...prev, directors }));
+      });
     }
   };
 
@@ -56,9 +69,17 @@ const SearchBar: React.FC = () => {
           {results.movies.length > 0 && (
             <div>
               <h3 className="font-semibold text-blue-600 text-lg">Movies</h3>
-              <ul className="list-disc pl-5 text-gray-800">
+              <ul className="list-disc flex flex-col pl-5 text-gray-800 gap-2 max-h-[10rem] overflow-scroll ">
                 {results.movies.map((movie, index) => (
-                  <li key={index}>{movie}</li>
+                  <div className="flex justify-between">
+                    <li key={index}>{movie.name}</li>
+                    <button
+                      className="p-2 bg-yellow-500 rounded-lg text-white"
+                      onClick={() => getDetails(movie)}
+                    >
+                      Details
+                    </button>
+                  </div>
                 ))}
               </ul>
             </div>
@@ -66,9 +87,19 @@ const SearchBar: React.FC = () => {
           {results.actors.length > 0 && (
             <div className="mt-4">
               <h3 className="font-semibold text-blue-600 text-lg">Actors</h3>
-              <ul className="list-disc pl-5 text-gray-800">
+              <ul className="list-disc flex flex-col pl-5 text-gray-800 gap-2 max-h-[10rem] overflow-scroll ">
                 {results.actors.map((actor, index) => (
-                  <li key={index}>{actor}</li>
+                  <div className="flex justify-between">
+                    <li key={index}>
+                      {actor.first_name} {actor.last_name}
+                    </li>
+                    <button
+                      className="p-2 bg-yellow-500 rounded-lg text-white"
+                      onClick={() => getDetails(actor)}
+                    >
+                      Details
+                    </button>
+                  </div>
                 ))}
               </ul>
             </div>
@@ -76,9 +107,19 @@ const SearchBar: React.FC = () => {
           {results.directors.length > 0 && (
             <div className="mt-4">
               <h3 className="font-semibold text-blue-600 text-lg">Directors</h3>
-              <ul className="list-disc pl-5 text-gray-800">
+              <ul className="list-disc flex flex-col pl-5 text-gray-800 gap-2 max-h-[10rem] overflow-scroll ">
                 {results.directors.map((director, index) => (
-                  <li key={index}>{director}</li>
+                  <div className="flex justify-between" key={index}>
+                    <li>
+                      {director.first_name} {director.last_name}
+                    </li>
+                    <button
+                      className="p-2 bg-yellow-500 rounded-lg text-white"
+                      onClick={() => getDetails(director)}
+                    >
+                      Details
+                    </button>
+                  </div>
                 ))}
               </ul>
             </div>
